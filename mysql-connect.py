@@ -16,7 +16,7 @@ root.geometry("240x120")
 mydb = mysql.connector.connect(
     host='localhost',
     user='root',
-    password='l0v3tt3LAFT!!',
+    password='l0v3tt3',
     port='3306',
     database='imdb'
 )
@@ -25,7 +25,7 @@ root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=3)
 mycursor = mydb.cursor()
 
-
+#Window for creation of new book record
 def createWindow():
     new = Toplevel()
     new.geometry("400x400")
@@ -73,6 +73,7 @@ def createWindow():
 
     create_btn.grid(row=7, column=0, columnspan=2, padx=5, pady=5)
 
+# Creating/Inserting new book records to list and database
 def create():
 
     id = book_id.get()
@@ -95,6 +96,25 @@ def create():
         messagebox.showerror("Error", str(e))
         mydb.rollback()
 
+# Deleting book records from list and database
+def deleteRec():
+    try:
+        selected_index = bookrecords.curselection()
+
+        for index in selected_index:
+            selected_item = bookrecords.get(index)
+            book_to_delete = selected_item.split()[0]
+            mycursor.execute('DELETE FROM book WHERE BookID = %s', (book_to_delete,))
+            mydb.commit()
+            bookrecords.delete(index)
+
+        messagebox.showinfo("Success", "Record(s) deleted successfully.")
+
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
+        mydb.rollback()
+
+ # For clearing entries in createWindow
 def clear_entries():
     book_id.delete(0, END)
     book_title.delete(0, END)
@@ -111,8 +131,9 @@ def showbooks():
     root.columnconfigure(1, weight=1)
     root.columnconfigure(2, weight=1)
     mycursor.execute('SELECT * from book')
+    global books
     books = mycursor.fetchall()
-
+    global bookrecords
     # Format headers
     headers = ["ID", "Title", "Genre", "Price", "Stock", "AuthorID", "GroupID"]
     formatted_headers = "{:<5} {:<45} {:<20} {:<10} {:<10} {:<10} {:<10}".format(*headers)
@@ -131,7 +152,7 @@ def showbooks():
 
     insert = Button(root, text="Create New Book Record", command=createWindow)
     update = Button(root, text="Update Book Record")  #
-    delete = Button(root, text="Delete Book Record")  # , command=showtrans
+    delete = Button(root, text="Delete Book Record", command=deleteRec)
 
     insert.grid(row=1, column=0,pady=5, padx=5, sticky='s')
     update.grid(row=1, column=1,pady=5, padx=5, sticky='s')
