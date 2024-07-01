@@ -1,6 +1,6 @@
 import mysql.connector
 from tkinter import *
-from tkinter import ttk
+
 from tkinter import messagebox
 # Create/Insert new Book Record
 # Update a Book Record
@@ -182,3 +182,4 @@ l2.grid(row=2, column=0, sticky=W, padx=5, pady=5)
 password.grid(row=2, column=1, sticky=E, padx=5, pady=5)
 log.grid(row=3, column=1, sticky=E, padx=5, pady=5)
 
+mainloop()
