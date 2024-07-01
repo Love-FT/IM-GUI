@@ -29,6 +29,7 @@ mycursor = mydb.cursor()
 def createWindow():
     new = Toplevel()
     new.geometry("400x400")
+    new.grab_set()
     global book_id
     global book_title
     global genre
