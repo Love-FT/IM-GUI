@@ -179,9 +179,11 @@ def clear_window():
         widget.destroy()
 
 def login():
-    mycursor.execute('SELECT * FROM staff WHERE username = %s AND passw = %s', (username.get(),password.get()))
-    result = mycursor.fetchone()
-    if result:
+    user = 'staff'
+    passw = 'login'
+    # mycursor.execute('SELECT * FROM staff WHERE username = %s AND passw = %s', (username.get(),password.get()))
+    # result = mycursor.fetchone()
+    if username.get() == user and password.get() ==  passw:
         messagebox.showinfo("Message", "Login Success!")
         clear_window()
         start()
