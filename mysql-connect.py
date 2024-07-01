@@ -11,7 +11,7 @@ from tkinter import messagebox
 
 
 root = Tk()
-root.title("Try")
+root.title("Bookshop Database")
 root.geometry("240x120")
 mydb = mysql.connector.connect(
     host='localhost',
