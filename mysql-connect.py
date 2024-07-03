@@ -135,7 +135,7 @@ root.geometry(f'{appWidth}x{appHeight}+{int(x)}+{int(y)}')
 mydb = mysql.connector.connect(
     host='localhost',
     user='root',
-    password='reindf_010604',
+    password=#Insert local DB Password,
     port='3306',
     database='imdb'
 )
