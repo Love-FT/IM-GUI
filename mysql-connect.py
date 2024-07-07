@@ -33,8 +33,8 @@ def startMenu():
     root.geometry(f'{appWidth}x{appHeight}+{int(x)}+{int(y)}')
     title = Label(root, text="Bookshop Database")
     showb = Button(root, text="Show Book Records", command=showBooksMenu)
-    showc = Button(root, text="Show Registered Customers")  #
-    showt = Button(root, text="Show Customer Transaction History", command=showCustomerMenu)
+    showc = Button(root, text="Show Registered Customers", command=showCustomerMenu)
+    showt = Button(root, text="Show Customer Transaction History") #Insert command
     title.grid(row=0, column=0, columnspan=2, sticky='news')
     showb.grid(row=1, column=0, columnspan=2, pady=5, padx=5)
     showc.grid(row=2, column=0, columnspan=2, pady=5, padx=5)
@@ -132,15 +132,15 @@ appHeight = 120
 x = (root.winfo_screenwidth() / 2) - (appWidth / 2)
 y = (root.winfo_screenheight() / 2) - (appHeight / 2)
 root.geometry(f'{appWidth}x{appHeight}+{int(x)}+{int(y)}')
+root.columnconfigure(0, weight=1)
+
 mydb = mysql.connector.connect(
     host='localhost',
     user='root',
-    password=#Insert local DB Password,
+    password='reindf_010604',
     port='3306',
     database='imdb'
-)
-
-root.columnconfigure(0, weight=1)
+    )
 root.columnconfigure(1, weight=3)
 mycursor = mydb.cursor()
 
