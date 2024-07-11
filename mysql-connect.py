@@ -3,17 +3,17 @@ from tkinter import *
 
 from tkinter import messagebox
 
+
 # Login Menu
 def loginMenu():
-    startMenu()
-    """mycursor.execute('SELECT * FROM staff WHERE username = %s AND passw = %s', (username.get(), password.get()))
+    mycursor.execute('SELECT * FROM staff WHERE username = %s AND passw = %s', (username.get(), password.get()))
     result = mycursor.fetchone()
     if result:
         messagebox.showinfo("Message", "Login Success!")
         clear_window()
         startMenu()
     else:
-        messagebox.showwarning("Access Denied", "Invalid Credentials!")"""
+        messagebox.showwarning("Access Denied", "Invalid Credentials!")
 
 
 # Main Menu
@@ -25,9 +25,9 @@ def startMenu():
     y = (root.winfo_screenheight() / 2) - (appHeight / 2)
     root.geometry(f'{appWidth}x{appHeight}+{int(x)}+{int(y)}')
     title = Label(root, text="Bookshop Database")
-    showb = Button(root, text="Show Book Records", command=showBooksMenu)
-    showc = Button(root, text="Show Registered Customers", command=showCustomerMenu)
-    showt = Button(root, text="Show Customer Transaction History", command=showTransaction)  # Insert command
+    showb = Button(root, text="Show Book Records", command=showBooksMenu, width=32)
+    showc = Button(root, text="Show Registered Customers", command=showCustomerMenu, width=32)
+    showt = Button(root, text="Show Customer Transaction History", command=showTransaction, width=32)
     title.grid(row=0, column=0, columnspan=2, sticky='news')
     showb.grid(row=1, column=0, columnspan=2, pady=5, padx=5)
     showc.grid(row=2, column=0, columnspan=2, pady=5, padx=5)
@@ -53,11 +53,40 @@ def showBooksMenu():
     global books
     books = mycursor.fetchall()
     global book_records
+    global max_lengths
 
     # List Box Frame
     panelList = LabelFrame(root, text="BOOK INFORMATION LIST", font=('Inter', 12, 'bold'),
                            padx=20, pady=12)
     panelList.pack(padx=80, pady=(12, 0), fill='both', expand=True)
+
+    # Book Title entry and Show buttons frame
+    show = Frame(panelList)
+    show.pack(pady=10, anchor='n')
+
+    bookTitle = Label(show, text="Search by Book Title:")
+    bookTitle.pack(side=LEFT)
+
+    bookTitleEntry = Entry(show)
+    bookTitleEntry.pack(side=LEFT, padx=10)
+
+    # Search Panel
+    search = Button(show, text="Search", command=lambda: show_books(bookTitleEntry.get()),
+                    width=13, height=1)
+    search.pack(side=LEFT)
+
+    searchLabel = Label(show, text="Search by Stock:")
+    searchLabel.pack(side=LEFT, padx=10)
+
+    searchEntry = Entry(show, width=10)
+    searchEntry.pack(side=LEFT, padx=(0, 10))
+
+    searchButton = Button(show, text="Search", command=lambda: searchBooksByStock(searchEntry.get()),
+                          width=13, height=1)
+    searchButton.pack(side=LEFT)
+
+    show_all = Button(show, text="Show All", command=show_all_books, width=13, height=1)
+    show_all.pack(side=LEFT, padx=10)
 
     # Format headers
     headers = ["ID", "Title", "Genre", "Price", "Stock", "AuthorID", "GroupID"]
@@ -68,13 +97,6 @@ def showBooksMenu():
     book_records = Listbox(panelList, bg="white", font=("Courier New", 10))
     book_records.insert(0, formatted_headers)
     book_records.insert(1, "-" * 120)
-
-    for b in books:
-        # Replace None values with empty strings
-        b = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(b)]
-        formatted_book = "{:<5} {:<40} {:<15} {:<10} {:<10} {:<10} {:<10}".format(
-            b[0], b[1], b[2], b[3], b[4], b[5], b[6])
-        book_records.insert(END, formatted_book)
 
     book_records.pack(side='left', fill='both', expand=True)
 
@@ -92,17 +114,65 @@ def showBooksMenu():
                        command=createBookWindow)
     btnUpdate = Button(panelButton, text="Update Book Record", justify=CENTER, width=24,
                        command=lambda: updateBookWindow(getSelectedBook()))
-    btnDelete = Button(panelButton, text="Delete Book Record", justify=CENTER, width=24, command=deleteRec)
     btnBack = Button(panelButton, text="Go back to Main Menu >", justify=CENTER, width=24, command=startMenu)
 
     btnInsert.pack(side=LEFT)
     btnUpdate.pack(side=LEFT, padx=12)
-    btnDelete.pack(side=LEFT, padx=12)
     btnBack.pack(side=RIGHT)
 
 
-# Method for Author Radiobuttons
-def authorChoice(authorType):
+def searchBooksByStock(stock_threshold):
+    try:
+        stock_threshold = int(stock_threshold)
+    except ValueError:
+        messagebox.showerror("Error", "Please enter a valid number for stock threshold.")
+        return
+
+    mycursor.execute('SELECT * FROM book WHERE Stock = %s', (stock_threshold,))
+    search_results = mycursor.fetchall()
+
+    # Clear the Listbox and insert headers
+    book_records.delete(0, END)
+    headers = ["ID", "Title", "Genre", "Price", "Stock", "AuthorID", "GroupID"]
+    max_lengths = [5, 40, 15, 10, 10, 10, 10]
+    formatted_headers = "{:<5} {:<40} {:<15} {:<10} {:<10} {:<10} {:<10}".format(*headers)
+    book_records.insert(0, formatted_headers)
+    book_records.insert(1, "-" * 120)
+
+    for b in search_results:
+        b = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(b)]
+        formatted_book = "{:<5} {:<40} {:<15} {:<10} {:<10} {:<10} {:<10}".format(
+            b[0], b[1], b[2], b[3], b[4], b[5], b[6])
+        book_records.insert(END, formatted_book)
+
+
+def show_books(book_title):
+    # Clear the listbox before showing new records
+    book_records.delete(2, END)
+
+    # Fetch books that match the title
+    filtered_books = [book for book in books if book_title.lower() in book[1].lower()]
+
+    for b in filtered_books:
+        b = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(b)]
+        formatted_book = "{:<5} {:<40} {:<15} {:<10} {:<10} {:<10} {:<10}".format(
+            b[0], b[1], b[2], b[3], b[4], b[5], b[6])
+        book_records.insert(END, formatted_book)
+
+
+def show_all_books():
+    # Clear the listbox before showing all records
+    book_records.delete(2, END)
+
+    for b in books:
+        b = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(b)]
+        formatted_book = "{:<5} {:<40} {:<15} {:<10} {:<10} {:<10} {:<10}".format(
+            b[0], b[1], b[2], b[3], b[4], b[5], b[6])
+        book_records.insert(END, formatted_book)
+
+
+# Method for Author Create Radiobuttons
+def authorCreateChoice(authorType):
     selection = authorType.get()
     if selection == 1:
         create_authid.config(state=NORMAL)
@@ -154,9 +224,9 @@ def createBookWindow():
 
     authorType = IntVar()
     rbSingle = Radiobutton(entryPanel, text="Single", variable=authorType, value=1,
-                           command=lambda: authorChoice(authorType))
+                           command=lambda: authorCreateChoice(authorType))
     rbMultip = Radiobutton(entryPanel, text="Multi", variable=authorType, value=2,
-                           command=lambda: authorChoice(authorType))
+                           command=lambda: authorCreateChoice(authorType))
 
     l1.grid(row=1, column=0, pady=4, padx=(0, 16), sticky='w')
     l2.grid(row=2, column=0, pady=4, padx=(0, 16), sticky='w')
@@ -167,7 +237,7 @@ def createBookWindow():
     l7.grid(row=8, column=0, pady=4, padx=(0, 16), sticky='w')
 
     create_title.grid(row=1, column=1, pady=4, sticky='e')
-    create_genre.grid(row=2, column=1, pady=4,  sticky='e')
+    create_genre.grid(row=2, column=1, pady=4, sticky='e')
     create_price.grid(row=3, column=1, pady=4, sticky='e')
     create_stock.grid(row=4, column=1, pady=4, sticky='e')
     rbSingle.grid(row=6, column=0, pady=4)
@@ -181,7 +251,7 @@ def createBookWindow():
 
     createButton = Button(buttonPanel, text="Create", width=16, command=bookCreateBtn)
     createButton.grid(row=0, column=0, sticky='nesw', padx=(0, 6), pady=4)
-    clearButton = Button(buttonPanel, text="Clear",  width=16, command=clear_entries)
+    clearButton = Button(buttonPanel, text="Clear", width=16, command=clear_entries)
     clearButton.grid(row=0, column=1, sticky='nesw', padx=(6, 0), pady=4)
     cancelButton = Button(buttonPanel, text="Cancel", command=lambda: insertWindow.destroy())
     cancelButton.grid(row=1, column=0, columnspan=2, sticky='nesw', pady=4)
@@ -277,6 +347,18 @@ def getSelectedBook():
     return None
 
 
+# Method for Author Create Radiobuttons
+def authorUpdateChoice(authorUpdateType):
+    global authorSelection
+    authorSelection = authorUpdateType.get()
+    if authorSelection == 1:
+        entry_authid.config(state=NORMAL)
+        entry_groupid.config(state=DISABLED)
+    elif authorSelection == 2:
+        entry_authid.config(state=DISABLED)
+        entry_groupid.config(state=NORMAL)
+
+
 # Update Book Record Window
 def updateBookWindow(book):
     if book is None:
@@ -288,12 +370,12 @@ def updateBookWindow(book):
     global entry_genre
     global entry_price
     global entry_stock
-    global entry_authorid
+    global entry_authid
     global entry_groupid
 
     updateWindow = Toplevel()
     updateWindow.title("Update Book Record:")
-    updateWindow.geometry("400x320")
+    updateWindow.geometry("400x400")
     updateWindow.resizable(False, False)
     updateWindow.grab_set()
 
@@ -304,13 +386,13 @@ def updateBookWindow(book):
 
     print(book)
     book_id, title, genre, price, stock, author_id, group_id = book
-    l1 = Label(entryPanel, text="Book ID:", justify="left")
-    l2 = Label(entryPanel, text="Title:", justify="left")
-    l3 = Label(entryPanel, text="Genre:", justify="left")
-    l4 = Label(entryPanel, text="Price:", justify="left")
-    l5 = Label(entryPanel, text="Stock:", justify="left")
-    l6 = Label(entryPanel, text="Author ID:", justify="left")
-    l7 = Label(entryPanel, text="Group ID:", justify="left")
+    l1 = Label(entryPanel, text="Book Title:", justify="left")
+    l2 = Label(entryPanel, text="Genre:", justify="left")
+    l3 = Label(entryPanel, text="Price:", justify="left")
+    l4 = Label(entryPanel, text="Stock:", justify="left")
+    l5 = Label(entryPanel, text="Author Type:", justify="left")
+    l6 = Label(entryPanel, text="Author Name:", justify="left")
+    l7 = Label(entryPanel, text="Group Name:", justify="left")
 
     label_bookid = Label(entryPanel, text=book_id)
     entry_title = Entry(entryPanel, width=24)
@@ -321,30 +403,49 @@ def updateBookWindow(book):
     entry_price.insert(0, price)
     entry_stock = Entry(entryPanel, width=24)
     entry_stock.insert(0, stock)
-    entry_authorid = Entry(entryPanel, width=24)
+    entry_authid = Entry(entryPanel, width=24)
     entry_groupid = Entry(entryPanel, width=24)
 
-    l1.grid(row=1, column=0, sticky="w", pady=4, padx=(0, 16))
-    l2.grid(row=2, column=0, sticky="w", pady=4, padx=(0, 16))
-    l3.grid(row=3, column=0, sticky="w", pady=4, padx=(0, 16))
-    l4.grid(row=4, column=0, sticky="w", pady=4, padx=(0, 16))
-    l5.grid(row=5, column=0, sticky="w", pady=4, padx=(0, 16))
+    authorUpdateType = IntVar()
+    rbUpdateSingle = Radiobutton(entryPanel, text="Single", variable=authorUpdateType, value=1,
+                                 command=lambda: authorUpdateChoice(authorUpdateType))
+    rbUpdateMultip = Radiobutton(entryPanel, text="Multi", variable=authorUpdateType, value=2,
+                                 command=lambda: authorUpdateChoice(authorUpdateType))
 
-    label_bookid.grid(row=1, column=1, pady=4)
-    entry_title.grid(row=2, column=1, sticky="e", pady=4)
-    entry_genre.grid(row=3, column=1, sticky="e", pady=4)
-    entry_price.grid(row=4, column=1, sticky="e", pady=4)
-    entry_stock.grid(row=5, column=1, sticky="e", pady=4)
+    l1.grid(row=1, column=0, pady=4, padx=(0, 16), sticky='w')
+    l2.grid(row=2, column=0, pady=4, padx=(0, 16), sticky='w')
+    l3.grid(row=3, column=0, pady=4, padx=(0, 16), sticky='w')
+    l4.grid(row=4, column=0, pady=4, padx=(0, 16), sticky='w')
+    l5.grid(row=5, column=0, columnspan=2, pady=4, padx=(0, 16), sticky='nesw')
+    l6.grid(row=7, column=0, pady=4, padx=(0, 16), sticky='w')
+    l7.grid(row=8, column=0, pady=4, padx=(0, 16), sticky='w')
+
+    entry_title.grid(row=1, column=1, pady=4, sticky='e')
+    entry_genre.grid(row=2, column=1, pady=4, sticky='e')
+    entry_price.grid(row=3, column=1, pady=4, sticky='e')
+    entry_stock.grid(row=4, column=1, pady=4, sticky='e')
+    rbUpdateSingle.grid(row=6, column=0, pady=4)
+    rbUpdateMultip.grid(row=6, column=1, pady=4)
+    entry_authid.grid(row=7, column=1, pady=4, sticky='e')
+    entry_groupid.grid(row=8, column=1, pady=4, sticky='e')
 
     # For Author ID and Group ID
-    if author_id is None:
-        entry_groupid.insert(0, group_id)
-        l7.grid(row=6, column=0, sticky="w", pady=4, padx=(0, 16))
-        entry_groupid.grid(row=6, column=1, sticky="e", pady=4)
-    elif group_id is None:
-        entry_authorid.insert(0, author_id)
-        l6.grid(row=6, column=0, sticky="w", pady=4, padx=(0, 16))
-        entry_authorid.grid(row=6, column=1, sticky="e", pady=4)
+    if author_id is not None:
+        query = "SELECT Single_Name FROM author_single WHERE authorid = %s;"
+        mycursor.execute(query, (author_id,))
+        author_name = mycursor.fetchone()
+
+        rbUpdateSingle.select()
+        entry_groupid.config(state=DISABLED)
+        entry_authid.insert(0, author_name[0])
+    elif group_id is not None:
+        query = "SELECT Group_Name FROM author_multi WHERE groupid = %s;"
+        mycursor.execute(query, (group_id,))
+        group_name = mycursor.fetchone()
+
+        rbUpdateMultip.select()
+        entry_authid.config(state=DISABLED)
+        entry_groupid.insert(0, group_name[0])
 
     # Update Button Frame
     buttonPanel = Frame(updateWindow)
@@ -364,7 +465,7 @@ def bookUpdateBtn():
     global entry_genre
     global entry_price
     global entry_stock
-    global entry_authorid
+    global entry_authid
     global entry_groupid
 
     bookid = label_bookid.cget("text")
@@ -372,7 +473,7 @@ def bookUpdateBtn():
     genre = entry_genre.get()
     price = entry_price.get()
     stock = entry_stock.get()
-    authid = entry_authorid.get()
+    authid = entry_authid.get()
     groupid = entry_groupid.get()
 
     # Checks whether an entry box is left empty or not
@@ -381,46 +482,55 @@ def bookUpdateBtn():
         return
 
     try:
-        # For Author ID and Group ID
-        if not authid:
+        # Check if the author or group exists in the database and get the ID
+        if authorSelection == 1:
+            query = "SELECT authorid FROM author_single WHERE Single_Name = %s;"
+            mycursor.execute(query, (authid,))
+            result = mycursor.fetchone()
+
+            if result:
+                authorid = result[0]
+            else:
+                # Insert new single author
+                insert_query = "INSERT INTO author_single (Single_Name) VALUES (%s);"
+                mycursor.execute(insert_query, (authid,))
+                mydb.commit()
+                authorid = mycursor.lastrowid
+        else:
+            query = "SELECT groupid FROM author_multi WHERE Group_Name = %s;"
+            mycursor.execute(query, (groupid,))
+            result = mycursor.fetchone()
+
+            if result:
+                groupid = result[0]
+            else:
+                # Insert new group
+                insert_query = "INSERT INTO author_multi (Group_Name) VALUES (%s);"
+                mycursor.execute(insert_query, (groupid,))
+                mydb.commit()
+                groupid = mycursor.lastrowid
+
+        # Update the book record
+        if authorSelection == 1:
             query = ("UPDATE book "
-                     "SET Title = %s, Genre = %s, Price = %s, Stock = %s, GroupID = %s "
+                     "SET Title = %s, Genre = %s, Price = %s, Stock = %s, AuthorID = %s, GroupID = NULL "
                      "WHERE BookID = %s;")
-            mycursor.execute(query, (title, genre, price, stock, groupid, bookid))
+            mycursor.execute(query, (title, genre, price, stock, authorid, bookid))
         else:
             query = ("UPDATE book "
-                     "SET Title = %s, Genre = %s, Price = %s, Stock = %s, AuthorID = %s "
+                     "SET Title = %s, Genre = %s, Price = %s, Stock = %s, GroupID = %s, AuthorID = NULL "
                      "WHERE BookID = %s;")
-            mycursor.execute(query, (title, genre, price, stock, authid, bookid))
+            mycursor.execute(query, (title, genre, price, stock, groupid, bookid))
 
         mydb.commit()
 
         # Log update success
-        print(f"Updated book: {bookid} - {title}, {genre}, {price}, {stock}, {groupid if groupid else authid}")
+        print(f"Updated book: {bookid} - {title}, {genre}, {price}, {stock}, {groupid if groupid else authorid}")
 
         messagebox.showinfo("Success", "Record updated successfully.")
 
         updateWindow.destroy()
         showBooksMenu()
-
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
-        mydb.rollback()
-
-
-# Deleting book records from list and database
-def deleteRec():
-    try:
-        selected_index = book_records.curselection()
-
-        for index in selected_index:
-            selected_item = book_records.get(index)
-            book_to_delete = selected_item.split()[0]
-            mycursor.execute('DELETE FROM book WHERE BookID = %s', (book_to_delete,))
-            mydb.commit()
-            book_records.delete(index)
-
-        messagebox.showinfo("Success", "Record(s) deleted successfully.")
 
     except Exception as e:
         messagebox.showerror("Error", str(e))
@@ -444,6 +554,20 @@ def showCustomerMenu():
     panelList = LabelFrame(root, text="REGISTERED CUSTOMER LIST", font=('Inter', 12, 'bold'),
                            padx=20, pady=12)
     panelList.pack(padx=80, pady=(12, 0), fill='both', expand=True)
+
+    # Search Bar Frame
+    searchFrame = Frame(panelList)
+    searchFrame.pack(pady=12, anchor='n')
+
+    searchLabel = Label(searchFrame, text="Search by Name:")
+    searchLabel.pack(side='left')
+
+    searchEntry = Entry(searchFrame)
+    searchEntry.pack(side='left', padx=10)
+
+    searchButton = Button(searchFrame, text="Search", command=lambda: searchCustomer(searchEntry.get()),
+                          width=13, height=1)
+    searchButton.pack(side='left')
 
     # Format Headers
     headers = ["ID", "Last Name", "First Name", "M.I.", "Email", "Phone"]
@@ -481,6 +605,32 @@ def showCustomerMenu():
     btnUpdate.pack(side=LEFT)
     btnDelete.pack(side=LEFT, padx=56)
     btnBack.pack(side=RIGHT)
+
+
+def searchCustomer(search_term):
+    global customers
+    global customer_records
+
+    # Clear the current list
+    customer_records.delete(0, END)
+
+    # Insert headers again
+    headers = ["ID", "Last Name", "First Name", "M.I.", "Email", "Phone"]
+    max_lengths = [5, 25, 25, 5, 30, 15]
+    formatted_headers = "{:<5} {:<25} {:<25} {:<5} {:<30} {:<15}".format(*headers)
+    customer_records.insert(0, formatted_headers)
+    customer_records.insert(1, "-" * 110)
+
+    # Filter customers based on search term
+    search_term = search_term.lower()
+    filtered_customers = [c for c in customers if search_term.lower() in (c[1].lower() + " " + c[2].lower())]
+
+    # Insert filtered customers
+    for c in filtered_customers:
+        # Replace None values with empty strings
+        c = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(c)]
+        formatted_book = "{:<5} {:<25} {:<25} {:<5} {:<30} {:<15}".format(*c)
+        customer_records.insert(END, formatted_book)
 
 
 def getSelectedCustomer():
@@ -570,8 +720,8 @@ def custUpdateBtn():
     global entry_phone
 
     cusid = label_custid.cget("text")
-    fname = entry_lastname.get()
-    lname = entry_firstname.get()
+    lname = entry_lastname.get()
+    fname = entry_firstname.get()
     mname = entry_middlein.get()
     email = entry_email.get()
     phone = entry_phone.get()
@@ -676,11 +826,8 @@ def custDeleteBtn():
     print(f"Attempting to delete CustomerID: {cusid}")  # Debugging print
 
     try:
-        query = ("ALTER TABLE orders "
-                 "DROP FOREIGN KEY orders_ibfk_1;"
-                 "ALTER TABLE orders "
-                 "ADD CONSTRAINT orders_ibfk_1 FOREIGN KEY (CustomerID) "
-                 "REFERENCES customer(CustomerID) ON DELETE CASCADE;")
+        query = ("DELETE FROM customer "
+                 "WHERE CustomerID = %s;")
         mycursor.execute(query, (cusid,))
         mydb.commit()
         messagebox.showinfo("Success", "Record deleted successfully.")
@@ -720,9 +867,19 @@ def showTransaction():
     customer_entry = Entry(show)
     customer_entry.pack(side=LEFT, padx=10)
 
-    show_specific = Button(show, text="Show", command=lambda: show_customer_history(customer_entry.get()),
+    show_specific = Button(show, text="Search", command=lambda: show_customer_history(customer_entry.get()),
                            width=13, height=1)
     show_specific.pack(side=LEFT)
+
+    searchLabel = Label(show, text="Search by Name:")
+    searchLabel.pack(side=LEFT, padx=10)
+
+    searchEntry = Entry(show)
+    searchEntry.pack(side=LEFT, padx=10)
+
+    searchButton = Button(show, text="Search", command=lambda: search_customer_history(searchEntry.get()),
+                          width=13, height=1)
+    searchButton.pack(side=LEFT)
 
     show_all = Button(show, text="Show All", command=show_all_history, width=13, height=1)
     show_all.pack(side=LEFT, padx=10)
@@ -744,14 +901,46 @@ def showTransaction():
     btnBack.pack(side=RIGHT)
 
 
+def search_customer_history(name):
+    query = '''
+        SELECT c.Last_name, c.First_name, c.Middle_in, o.OrderID, b.Title, o.Quantity, p.Amount, o.OrderDate
+        FROM customer AS c
+        JOIN orders AS o ON c.CustomerID = o.CustomerID
+        JOIN book AS b ON o.BookID = b.BookID
+        JOIN payment p ON o.OrderID = p.OrderID
+        WHERE CONCAT(c.First_name, ' ', c.Last_name) LIKE %s
+        ORDER BY o.OrderDate DESC
+        '''
+    mycursor.execute(query, ('%' + name + '%',))
+
+    transactions = mycursor.fetchall()
+
+    # Clear the listbox before inserting new data
+    history_listbox.delete(0, END)
+
+    # Add headers to the listbox
+    headers = ["Last Name", "First Name", "MI", "Order ID", "Book Title", "Qty", "Amount", "Order Date"]
+    max_lengths = [15, 15, 3, 10, 30, 5, 10, 15]
+    formatted_headers = "{:<15} {:<15} {:<3} {:<10} {:<30} {:<5} {:<10} {:<15}".format(*headers)
+    history_listbox.insert(0, formatted_headers)
+    history_listbox.insert(1, "-" * 120)
+
+    # Insert transaction data into the listbox
+    for t in transactions:
+        t = [truncate_text(str(item), max_lengths[i]) if item is not None else '' for i, item in enumerate(t)]
+        formatted_transaction = "{:<15} {:<15} {:<3} {:<10} {:<30} {:<5} {:<10} {:<15}".format(
+            t[0], t[1], t[2], t[3], t[4], t[5], t[6], str(t[7]))
+        history_listbox.insert(END, formatted_transaction)
+
+
+
 # Function to get specific customer transaction history
 def show_customer_history(customer_id):
     query = '''
-        SELECT c.Last_name, c.First_name, c.Middle_in, o.OrderID, b.Title, od.Quantity, p.Amount, o.OrderDate
+        SELECT c.Last_name, c.First_name, c.Middle_in, o.OrderID, b.Title, o.Quantity, p.Amount, o.OrderDate
         FROM customer c
         JOIN orders o ON c.CustomerID = o.CustomerID
-        JOIN orderdetail od ON o.OrderID = od.OrderID
-        JOIN book b ON od.BookID = b.BookID
+        JOIN book b ON o.BookID = b.BookID
         JOIN payment p ON o.OrderID = p.OrderID
         WHERE c.CustomerID = %s
         ORDER BY o.OrderDate DESC
@@ -781,11 +970,10 @@ def show_customer_history(customer_id):
 # Function to fetch all transaction history
 def show_all_history():
     query = '''
-        SELECT c.Last_name, c.First_name, c.Middle_in, o.OrderID, b.Title, od.Quantity, p.Amount, o.OrderDate
+        SELECT c.Last_name, c.First_name, c.Middle_in, o.OrderID, b.Title, o.Quantity, p.Amount, o.OrderDate
         FROM customer c
         JOIN orders o ON c.CustomerID = o.CustomerID
-        JOIN orderdetail od ON o.OrderID = od.OrderID
-        JOIN book b ON od.BookID = b.BookID
+        JOIN book b ON o.BookID = b.BookID
         JOIN payment p ON o.OrderID = p.OrderID
         ORDER BY o.OrderDate DESC
         '''
@@ -826,7 +1014,7 @@ mydb = mysql.connector.connect(
     user='root',
     password='reindf_010604',
     port='3306',
-    database='imdb'
+    database='imdb',
 )
 root.columnconfigure(1, weight=3)
 mycursor = mydb.cursor()
